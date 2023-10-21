@@ -1,13 +1,13 @@
 
 from ..loader import monkeypatch_schema
-from ..skeleton import (Annotation, AnnotationPage, Canvas, Manifest,
+from ..skeleton import (Annotation, AnnotationPage, Canvas, Manifest, BodyItem,
                         ResourceItem, ServiceItem, ServiceItem1)
 
 
 class CreateCanvasFromIIIF:
     # should probably be added to canvas helpers
 
-    def create_canvas_from_iiif(self, url, anno_id=None, anno_page_id=None, **kwargs):
+    def create_canvas_from_iiif(self, url, anno_id=None, anno_page_id=None, choice=False, **kwargs):
         """Create a canvas from a IIIF Image URL.
 
         Creates a canvas from a IIIF Image service passing any kwargs to the Canvas.
@@ -16,6 +16,7 @@ class CreateCanvasFromIIIF:
             url (str): An HTTP URL at which at a IIIF Image is available.
             anno_id (str): An HTTP URL for the annotation to which the image will be attached.
             anno_page_id (str): An HTTP URL for the annotation page to which the annotation will be attached.
+            choice: Should the images be shown as choices instead of individual annotations
             **kwargs (): see Canvas
 
         Returns:
@@ -25,6 +26,7 @@ class CreateCanvasFromIIIF:
         canvas = Canvas(**kwargs)
 
         body = ResourceItem(id="http://example.com", type="Image")
+
         infoJson = body.set_hwd_from_iiif(url)
 
         # Will need to handle IIIF 2...
@@ -48,7 +50,11 @@ class CreateCanvasFromIIIF:
             body.id = f'{infoJson["id"]}/full/max/0/default.jpg'
             body.format = "image/jpeg"
 
-        annotation = Annotation(id=anno_id, motivation='painting', body=body, target=canvas.id)
+        if choice:
+          body_choice = BodyItem(type="Choice", items=[body])
+          annotation = Annotation(id=anno_id, motivation='painting', body=body_choice, target=canvas.id)
+        else:
+          annotation = Annotation(id=anno_id, motivation='painting', body=body, target=canvas.id)
 
         annotationPage = AnnotationPage(id=anno_page_id)
         annotationPage.add_item(annotation)

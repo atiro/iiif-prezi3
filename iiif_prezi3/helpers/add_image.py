@@ -1,6 +1,6 @@
 from ..loader import monkeypatch_schema
 from ..skeleton import (AccompanyingCanvas, Annotation, AnnotationPage, Canvas,
-                        PlaceholderCanvas, ResourceItem)
+                        PlaceholderCanvas, ResourceItem, ServiceItem, ServiceItem1)
 
 
 class AddImage:
@@ -24,5 +24,38 @@ class AddImage:
         self.items.append(anno_page)
         return anno_page
 
+    def add_choice_image(self, image_url, **kwargs):
+        alt_image = ResourceItem(id=image_url, type='Image', **kwargs)
+        self.items[0].items[0].body.items.append(alt_image)
+
+    def add_choice_iiif_image(self, image_url, **kwargs):
+
+        alt_image = ResourceItem(id="http://example.com", type="Image")
+
+        infoJson = alt_image.set_hwd_from_iiif(image_url)
+
+        # Will need to handle IIIF 2...
+        if 'type' not in infoJson:
+            # Assume v2
+
+            # V2 profile contains profile URI plus extra features
+            profile = ''
+            for item in infoJson['profile']:
+                if isinstance(item, str):
+                    profile = item
+                    break
+
+            service = ServiceItem1(id=infoJson['@id'], profile=profile, type="ImageService2")
+            alt_image.service = [service]
+            alt_image.id = f'{infoJson["@id"]}/full/full/0/default.jpg'
+            alt_image.format = "image/jpeg"
+        else:
+            service = ServiceItem(id=infoJson['id'], profile=infoJson['profile'], type=infoJson['type'])
+            alt_image.service = [service]
+            alt_image.id = f'{infoJson["id"]}/full/max/0/default.jpg'
+            alt_image.format = "image/jpeg"
+
+        # hardcoded - AnnotationPage 0 / annotation 0 / body / items
+        self.items[0].items[0].body.items.append(alt_image)
 
 monkeypatch_schema([Canvas, AccompanyingCanvas, PlaceholderCanvas], AddImage)
